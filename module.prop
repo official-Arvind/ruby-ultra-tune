@@ -1,6 +1,6 @@
 id=ruby_ultra_tune
 name=Ruby Ultra Performance & Hotspot Thermal Nuker
-version=v2.0
-versionCode=20
+version=v2.1
+versionCode=21
 author=Arvind Ji
-description=Permanently nukes hotspot overheat shutdowns, locks 120Hz display everywhere, disables thermal throttling, and fine-tunes MT6877 CPU/GPU/I/O kernels.
+description=Flagship performance tuning, hotspot thermal shutdown nuker, cpuset multitasking, and MT6877 kernel optimization for Redmi Note 12 Pro 5G.

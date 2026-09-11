@@ -1,6 +1,6 @@
 # Ruby Ultra Performance & Hotspot Thermal Nuker
 
-An advanced kernel, scheduler, and thermal tuning module engineered specifically for the **Redmi Note 12 Pro 5G / Pro+ 5G (`ruby` / `rubypro`)** running MediaTek Dimensity 1080 (`MT6877`) on HyperOS / MIUI.
+An advanced flagship-grade kernel, scheduler, and thermal tuning module engineered specifically for the **Redmi Note 12 Pro 5G / Pro+ 5G (`ruby` / `rubypro`)** running MediaTek Dimensity 1080 (`MT6877`) on HyperOS / MIUI.
 
 Developed by **Arvind Ji**.
 
@@ -8,25 +8,38 @@ Developed by **Arvind Ji**.
 
 ## Features
 
-- **Nukes Hotspot Overheat Shutdowns:**
-  - Disables aggressive `mi_thermald` triggers that forcibly shut off Wi-Fi Hotspot (`ap0`) when the device warms up.
-  - Locks virtual thermal states and overrides Android framework hotspot protection settings so tethering stays on indefinitely.
+### 1. Flagship Multitasking & Background App Responsiveness (v2.1)
+- **CPUSet Load Distribution:**
+  - Expanded `background` cpuset from `0-2` to `0-3` and `system-background` to `0-5`.
+  - Eliminates the severe 3-core bottleneck where background apps choke each other, ensuring instant switching between recent apps.
+- **Top-App SchedTune & EAS Boosting:**
+  - Configured `stune.boost=10` and `prefer_idle=1` for active foreground apps.
+  - Injected MTK EAS capacity clamping (`perf_ta_uclamp_min=120`, `perfserv_ta_boost=10`) so app UI threads receive immediate placement on fast Cortex-A78 big cores without ramp lag.
+- **Disabled MediaTek SysLimiter & Schedstats:**
+  - Forces `/proc/perfmgr/syslimiter/syslimiter_force_disable` to `1` to eliminate MediaTek's artificial background task throttling.
+  - Disables `/proc/sys/kernel/sched_schedstats` to eliminate context-switching profiling overhead.
+- **Unlocked Background App Retention:**
+  - Disables the Android 12/13/14 Phantom Process Killer (`max_phantom_processes=2147483647`), preventing Android from killing child background processes.
 
-- **Unlocks MediaTek Dimensity 1080 (MT6877) CPU Throttle:**
-  - Disables MTK PPM (Process Power Manager) thermal policy `[4]` and power throttling policy `[3]`.
-  - Prevents the Big Cortex-A78 performance cores (CPU 6 & 7) from being throttled down to 600 MHz under heavy use.
-  - Keeps all 8 cores online and sets responsive frequency floors (Little: 1.05 GHz, Big: 1.04 GHz) to eliminate UI jitters and micro-stutters.
+### 2. Intelligent Memory & Caching Optimization
+- **High-Performance ZRAM Swappiness:**
+  - Tuned `vm.swappiness=100` to compress stale anonymous memory into fast LZ4 ZRAM, keeping physical RAM free for executable file and asset page caches.
+- **Asynchronous Memory Reclaim:**
+  - Tuned `vm.watermark_scale_factor=120` so `kswapd0` reclaims memory proactively in the background, eliminating direct-reclaim frame drops.
+  - Set `vm.vfs_cache_pressure=50` to keep filesystem and directory dentries hot in memory.
 
-- **Governor & Scheduler Tuning:**
-  - Schedutil `up_rate_limit_us` set to `0` for instantaneous frequency ramp on touch and app launches.
-  - Energy Aware Scheduling (EAS) fine-tuned for smooth 120Hz frame pacing.
+### 3. CPU Throttle Nuker (MediaTek Dimensity 1080)
+- **Disabled MTK PPM Policies:**
+  - Nukes MTK PPM thermal policy `[4]` and power throttling policy `[3]`.
+  - Prevents the Big Cortex-A78 performance cores (CPU 6 & 7) from being capped to 600 MHz under heavy load.
+- **Frequency Floors:**
+  - Little Cluster (CPU 0–5): Locked minimum frequency of `1.05 GHz`.
+  - Big Cluster (CPU 6–7): Locked minimum frequency of `1.04 GHz`.
+  - Instantaneous Schedutil touch ramp (`up_rate_limit_us=0`).
 
-- **Storage & VM Memory Optimization:**
-  - Internal UFS storage I/O set to `deadline` scheduler with `512 KB` read-ahead.
-  - Tuned `vm.swappiness=60` and `vm.vfs_cache_pressure=50` to keep active apps cached in memory without kswapd thrashing.
-
-- **Lightweight Watchdog:**
-  - Self-healing background service ensures PPM policies and CPU frequencies remain unlocked without touching display drivers or battery calibration.
+### 4. Wi-Fi Hotspot Thermal Shutdown Nuker
+- Stops aggressive `mi_thermald` triggers and permanently binds thermal state to `0`.
+- Overrides Android framework tethering safety cutoffs so Wi-Fi Hotspot (`ap0`) stays active indefinitely even under maximum system load.
 
 ---
 
@@ -42,12 +55,12 @@ Developed by **Arvind Ji**.
 ## Installation
 
 ### Method 1: Flashable Zip
-1. Download the latest `ruby_ultra_tune.zip` from Releases.
+1. Download `ruby_ultra_tune-v2.1.zip` from Releases.
 2. Open APatch / KernelSU / Magisk app.
-3. Go to the Modules tab, tap **Install from storage**, select the zip, and reboot.
+3. Go to Modules tab, tap **Install from storage**, select the zip, and reboot.
 
 ### Method 2: Manual Install
-1. Copy the repository files into `/data/adb/modules/ruby_ultra_tune/`:
+1. Copy files into `/data/adb/modules/ruby_ultra_tune/`:
    ```bash
    su
    mkdir -p /data/adb/modules/ruby_ultra_tune
