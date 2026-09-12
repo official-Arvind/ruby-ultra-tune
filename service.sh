@@ -54,20 +54,13 @@ echo 1 > /proc/sys/kernel/sched_energy_aware 2>/dev/null
 echo 0 > /proc/sys/kernel/sched_child_runs_first 2>/dev/null
 echo 0 > /proc/sys/kernel/sched_schedstats 2>/dev/null
 
-# ==============================================================================
-# 3. SURFACEFLINGER & FRAME LATENCY ELIMINATION
-# ==============================================================================
-/data/adb/ap/bin/resetprop debug.sf.latch_unsignaled 1 2>/dev/null
-/data/adb/ap/bin/resetprop ro.surface_flinger.max_frame_buffer_acquired_buffers 3 2>/dev/null
-/data/adb/ap/bin/resetprop debug.hwui.use_buffer_age false 2>/dev/null
-
 # Snappy 120Hz Animation Curves
 settings put global window_animation_scale 0.8 2>/dev/null
 settings put global transition_animation_scale 0.8 2>/dev/null
 settings put global animator_duration_scale 0.8 2>/dev/null
 
 # ==============================================================================
-# 4. CPUSETS & SCHEDTUNE (MULTITASKING & BACKGROUND APP FIX)
+# 3. CPUSETS & SCHEDTUNE (MULTITASKING & BACKGROUND APP FIX)
 # ==============================================================================
 echo 0-3 > /dev/cpuset/background/cpus 2>/dev/null
 echo 0-5 > /dev/cpuset/system-background/cpus 2>/dev/null
@@ -89,7 +82,7 @@ if [ -d "/proc/perfmgr/boost_ctrl/eas_ctrl" ]; then
 fi
 
 # ==============================================================================
-# 5. STORAGE & F2FS I/O JITTER PREVENTION
+# 4. STORAGE & F2FS I/O JITTER PREVENTION
 # ==============================================================================
 for s in /sys/block/sd*/queue/scheduler; do
     [ -f "$s" ] && echo deadline > "$s" 2>/dev/null
@@ -122,7 +115,7 @@ sysctl -w vm.stat_interval=10 2>/dev/null
 setprop persist.sys.fflag.override.settings_enable_monitor_phantom_procs false 2>/dev/null
 
 # ==============================================================================
-# 6. BACKGROUND WATCHDOG
+# 5. BACKGROUND WATCHDOG
 # ==============================================================================
 nohup sh -c '
 while true; do

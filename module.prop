@@ -1,6 +1,6 @@
 id=ruby_ultra_tune
 name=Ruby Ultra Performance & Hotspot Thermal Nuker
-version=v2.2
-versionCode=22
+version=v2.3
+versionCode=23
 author=Arvind Ji
-description=Jitter-free flagship performance, SurfaceFlinger unsignaled latching, F2FS I/O optimization, cpuset multitasking, and MT6877 kernel tuning for Redmi Note 12 Pro 5G.
+description=Jitter-free flagship performance, F2FS I/O optimization, cpuset multitasking, and MT6877 kernel tuning for Redmi Note 12 Pro 5G.
