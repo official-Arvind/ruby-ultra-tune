@@ -195,7 +195,8 @@ while true; do
     sleep 2
 
     # Battery Saving: Pause polling when screen is off (Doze mode)
-    if dumpsys power 2>/dev/null | grep -q "mWakefulness=Asleep"; then
+    # Native 0% IPC check bypassing Android's dumpsys framework entirely
+    if [ "$(cat /sys/class/leds/lcd-backlight/brightness 2>/dev/null)" = "0" ]; then
         sleep 5
         continue
     fi
