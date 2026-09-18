@@ -4,3 +4,4 @@ version=v3.0
 versionCode=30
 author=Arvind Ji
 description=Flagship performance engine with Auto Game Mode, GPU tuning, network optimization, touch IRQ affinity, and WebGUI for Redmi Note 12 Pro 5G (MT6877).
+updateJson=https://raw.githubusercontent.com/official-Arvind/ruby-ultra-tune/main/update.json
