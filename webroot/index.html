@@ -457,12 +457,16 @@ function switchTab(name, btn) {
 }
 
 // ===== READABLE NAME FROM PACKAGE =====
-function readableName(pkg) {
+function readableNameFallback(pkg) {
   const skip = ['com','org','io','net','in','me','de','ru','app','android','google','apps','mobile','original','internal','client','launcher','debug','prod','customer','english'];
   const parts = pkg.split('.').filter(p => !skip.includes(p) && p.length > 1);
   if (parts.length === 0) return pkg;
   let name = parts[0];
   return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function getAppLabel(pkg) {
+  return appCache[pkg] || readableNameFallback(pkg);
 }
 
 // ===== RENDER APP LIST =====
@@ -472,7 +476,7 @@ function renderList(containerId, searchId, selectedSet, packages) {
   const query = search ? search.value.toLowerCase() : '';
 
   const filtered = packages.filter(pkg =>
-    pkg.toLowerCase().includes(query) || readableName(pkg).toLowerCase().includes(query)
+    pkg.toLowerCase().includes(query) || getAppLabel(pkg).toLowerCase().includes(query)
   );
 
   // Sort: selected first, then alphabetical
@@ -480,7 +484,7 @@ function renderList(containerId, searchId, selectedSet, packages) {
     const aS = selectedSet.has(a) ? 0 : 1;
     const bS = selectedSet.has(b) ? 0 : 1;
     if (aS !== bS) return aS - bS;
-    return readableName(a).localeCompare(readableName(b));
+    return getAppLabel(a).localeCompare(getAppLabel(b));
   });
 
   container.innerHTML = filtered.map(pkg => {
@@ -488,7 +492,7 @@ function renderList(containerId, searchId, selectedSet, packages) {
     return `<div class="app-item${checked}" onclick="toggleApp('${containerId}', '${pkg}')" data-pkg="${pkg}">
       <img class="app-icon" src="ksu://icon/${pkg}" onerror="this.style.background='var(--surface3)'">
       <div class="app-info">
-        <div class="app-name">${readableName(pkg)}</div>
+        <div class="app-name">${getAppLabel(pkg)}</div>
         <div class="app-pkg">${pkg}</div>
       </div>
       <div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -560,17 +564,51 @@ async function loadConfig() {
   updateBadges();
 }
 
+let appCache = {};
+
 // ===== LOAD PACKAGES =====
 async function loadPackages() {
-  allPackages = [];
+  const cacheStr = localStorage.getItem("ruby_apps_cache_v2");
+  if (cacheStr) {
+    try {
+      appCache = JSON.parse(cacheStr);
+      allPackages = Object.keys(appCache);
+      if (allPackages.length > 0) {
+        document.getElementById('gamesListLoading').style.display = 'none';
+        document.getElementById('dnkListLoading').style.display = 'none';
+        renderList('gamesList', 'searchGames', gamesSet, allPackages);
+        renderList('dnkList', 'searchDNK', dnkSet, allPackages);
+      }
+    } catch (e) {}
+  }
+
   try {
     const api = window.apatch || window.ksu;
     if (api && api.listPackages) {
       let raw = await api.listPackages("all");
       if (typeof raw === 'string') raw = JSON.parse(raw);
-      // It might be an array of strings, or array of objects with packageName
+      
+      let freshPackages = [];
       if (Array.isArray(raw)) {
-        allPackages = raw.map(p => typeof p === 'string' ? p : p.packageName);
+        freshPackages = raw.map(p => typeof p === 'string' ? p : p.packageName);
+      }
+      
+      if (freshPackages.length > 0) {
+        if (api.getPackagesInfo) {
+          let infoRaw = await api.getPackagesInfo(JSON.stringify(freshPackages));
+          if (typeof infoRaw === 'string') infoRaw = JSON.parse(infoRaw);
+          if (Array.isArray(infoRaw)) {
+            infoRaw.forEach(info => {
+              if (info.packageName) {
+                appCache[info.packageName] = info.appLabel || readableNameFallback(info.packageName);
+              }
+            });
+          }
+        } else {
+          freshPackages.forEach(p => { if (!appCache[p]) appCache[p] = readableNameFallback(p); });
+        }
+        allPackages = freshPackages;
+        localStorage.setItem("ruby_apps_cache_v2", JSON.stringify(appCache));
       }
     }
   } catch (e) {
@@ -582,6 +620,8 @@ async function loadPackages() {
     const res = await exec(`sh ${MODDIR}/scripts/list_apps.sh`);
     if (res.stdout) {
       allPackages = res.stdout.trim().split(',').filter(l => l.trim()).map(l => l.trim());
+      allPackages.forEach(p => { if (!appCache[p]) appCache[p] = readableNameFallback(p); });
+      localStorage.setItem("ruby_apps_cache_v2", JSON.stringify(appCache));
     }
   }
   
@@ -591,7 +631,7 @@ async function loadPackages() {
   document.getElementById('gamesListLoading').style.display = 'none';
   document.getElementById('dnkListLoading').style.display = 'none';
 
-  if (allPackages.length === 0) {
+  if (allPackages.length === 0 || allPackages[0] === "Error_fetching_apps") {
     document.getElementById('gamesList').innerHTML = '<div class="empty-state"><p>No apps found</p></div>';
     document.getElementById('dnkList').innerHTML = '<div class="empty-state"><p>No apps found</p></div>';
     return;
