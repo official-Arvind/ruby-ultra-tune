@@ -63,7 +63,7 @@ log() {
 }
 
 notify() {
-    cmd notification post -S bigtext -t "$1" ruby_gamemode "$2" 2>/dev/null
+    su 2000 -c "cmd notification post -S bigtext -t \"$1\" ruby_gamemode \"$2\"" 2>/dev/null
 }
 
 notify_cancel() {
