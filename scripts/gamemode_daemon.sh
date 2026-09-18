@@ -86,12 +86,12 @@ is_protected() {
 }
 
 get_top_package() {
-    # Match: topResumedActivity=ActivityRecord{xxx u0 com.pkg/...}
-    # Match: ResumedActivity: ActivityRecord{xxx u0 com.pkg/...}
+    # Modern ultra-light foreground app check (Auditor Standard)
+    # Avoids heavy IPC dumpsys activity parsing
     local raw
-    raw=$(dumpsys activity activities 2>/dev/null | grep -E "topResumedActivity=|ResumedActivity:" | head -1)
+    raw=$(dumpsys window 2>/dev/null | grep -i mcurrentfocus | head -1)
     [ -z "$raw" ] && return
-    echo "$raw" | sed 's/.*u0 \([^ /]*\).*/\1/'
+    echo "$raw" | sed 's/.*u0 \([^/]*\).*/\1/'
 }
 
 activate_game_mode() {
@@ -105,12 +105,6 @@ activate_game_mode() {
     # 1. Restrict background cpuset
     echo 0-1 > /dev/cpuset/background/cpus 2>/dev/null
     echo 0-3 > /dev/cpuset/system-background/cpus 2>/dev/null
-
-    # 2. Max scheduling priority
-    echo 50 > /dev/stune/top-app/schedtune.boost 2>/dev/null
-    echo 1 > /dev/stune/top-app/schedtune.prefer_idle 2>/dev/null
-    echo 0 > /dev/stune/foreground/schedtune.boost 2>/dev/null
-    echo 0 > /dev/stune/background/schedtune.boost 2>/dev/null
 
     # 3. GPU boost to 890 MHz
     echo 890000 > /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null
@@ -179,11 +173,6 @@ deactivate_game_mode() {
 
     echo 0-3 > /dev/cpuset/background/cpus 2>/dev/null
     echo 0-5 > /dev/cpuset/system-background/cpus 2>/dev/null
-
-    echo 10 > /dev/stune/top-app/schedtune.boost 2>/dev/null
-    echo 1 > /dev/stune/top-app/schedtune.prefer_idle 2>/dev/null
-    echo 5 > /dev/stune/foreground/schedtune.boost 2>/dev/null
-    echo 0 > /dev/stune/background/schedtune.boost 2>/dev/null
 
     echo 509000 > /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null
     echo 0 > /sys/module/ged/parameters/gx_game_mode 2>/dev/null
