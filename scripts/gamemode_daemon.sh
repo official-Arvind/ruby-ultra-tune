@@ -131,10 +131,9 @@ activate_game_mode() {
 
     # 7. Kill non-essential background apps
     local killed=0
-    for pkg in $(ps -A -o UID,NAME 2>/dev/null | awk '$1 >= 10000 {print $2}' | cut -d':' -f1 | sort -u); do
+    for pkg in $(dumpsys activity processes 2>/dev/null | sed -n 's/.*packageName=\([^ ,}]*\).*/\1/p' | sort -u); do
         [ "$pkg" = "$game_pkg" ] && continue
         is_protected "$pkg" && continue
-        killall -9 "$pkg" 2>/dev/null
         am force-stop "$pkg" 2>/dev/null
         killed=$((killed + 1))
     done
@@ -225,12 +224,11 @@ while true; do
                 activate_game_mode "$TOP_PKG2"
             fi
         else
-            # Continuous Enforcement: Instantly destroy unauthorized apps that start in background
-            # Optimized to use 0% CPU by reading procfs natively instead of dumpsys
-            for pkg in $(ps -A -o UID,NAME 2>/dev/null | awk '$1 >= 10000 {print $2}' | cut -d':' -f1 | sort -u); do
+            # Continuous Enforcement: Check every 5 seconds to prevent battery drain
+            sleep 3
+            for pkg in $(dumpsys activity processes 2>/dev/null | sed -n 's/.*packageName=\([^ ,}]*\).*/\1/p' | sort -u); do
                 [ "$pkg" = "$CURRENT_GAME" ] && continue
                 is_protected "$pkg" && continue
-                killall -9 "$pkg" 2>/dev/null
                 am force-stop "$pkg" 2>/dev/null
             done
         fi
