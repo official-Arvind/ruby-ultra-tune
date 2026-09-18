@@ -579,7 +579,7 @@ async function loadPackages() {
 
   // Fallback to our shell script if native API is missing or empty
   if (allPackages.length === 0) {
-    const res = await exec(`su -c 'sh ${MODDIR}/scripts/list_apps.sh'`);
+    const res = await exec(`sh ${MODDIR}/scripts/list_apps.sh`);
     if (res.stdout) {
       allPackages = res.stdout.trim().split(',').filter(l => l.trim()).map(l => l.trim());
     }
