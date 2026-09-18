@@ -76,12 +76,38 @@ is_game() {
 }
 
 is_protected() {
-    local pkg="$1"
-    echo "$ESSENTIAL_PACKAGES" | grep -qxF "$pkg" && return 0
-    grep -qxF "$pkg" "$DNK_LIST" 2>/dev/null && return 0
+    local p="$1"
+    
+    # 1. Core Android & UI
+    [ "$p" = "android" ] && return 0
+    [ "$p" = "com.android.systemui" ] && return 0
+    [ "$p" = "com.miui.home" ] && return 0
+    
+    # 2. Xiaomi Core & Joyose (Required for Game Turbo)
+    [ "$p" = "com.miui.securitycenter" ] && return 0
+    [ "$p" = "com.xiaomi.joyose" ] && return 0
+    [ "$p" = "com.xiaomi.xmsf" ] && return 0
+    [ "$p" = "com.xiaomi.finddevice" ] && return 0
+    
+    # 3. Google Play Services & Billing (CRITICAL for Game Logins)
+    [ "$p" = "com.google.android.gms" ] && return 0
+    [ "$p" = "com.android.vending" ] && return 0
+    [ "$p" = "com.google.android.gsf" ] && return 0
+    
+    # 4. Input Methods (Keyboards)
+    [ "$p" = "com.google.android.inputmethod.latin" ] && return 0
+    [ "$p" = "com.touchtype.swiftkey" ] && return 0
+    [ "$p" = "com.iflytek.inputmethod.miui" ] && return 0
+    [ "$p" = "com.baidu.input_mi" ] && return 0
+    
+    # 5. User Whitelist (WebUI)
+    grep -qxF "$p" "$DNK_LIST" 2>/dev/null && return 0
+    
+    # 6. System UIDs (<10000)
     local uid
-    uid=$(dumpsys package "$pkg" 2>/dev/null | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -1)
+    uid=$(dumpsys package "$p" 2>/dev/null | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -1)
     [ -n "$uid" ] && [ "$uid" -lt 10000 ] && return 0
+    
     return 1
 }
 
