@@ -534,12 +534,15 @@ function updateBadges() {
 
 // ===== SAVE CONFIG =====
 async function saveConfig() {
-  const gamesStr = Array.from(gamesSet).join('\n');
-  const dnkStr = Array.from(dnkSet).join('\n');
+  const gamesText = Array.from(gamesSet).join('\n') + (gamesSet.size > 0 ? '\n' : '');
+  const dnkText = Array.from(dnkSet).join('\n') + (dnkSet.size > 0 ? '\n' : '');
+
+  const gamesB64 = btoa(unescape(encodeURIComponent(gamesText)));
+  const dnkB64 = btoa(unescape(encodeURIComponent(dnkText)));
 
   await exec(`mkdir -p ${CONFIG_DIR}`);
-  await exec(`cat << 'REOF' > ${CONFIG_DIR}/games.list\n${gamesStr}\nREOF`);
-  await exec(`cat << 'REOF' > ${CONFIG_DIR}/donotkill.list\n${dnkStr}\nREOF`);
+  await exec(`echo "${gamesB64}" | base64 -d > ${CONFIG_DIR}/games.list`);
+  await exec(`echo "${dnkB64}" | base64 -d > ${CONFIG_DIR}/donotkill.list`);
 
   hasChanges = false;
   document.getElementById('saveBar').classList.remove('visible');
@@ -648,7 +651,8 @@ async function refreshStatus() {
     cpu=$(cat /sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq 2>/dev/null)
     gpu=$(cat /sys/kernel/ged/hal/current_freqency 2>/dev/null | awk '{print $NF}')
     ram=$(cat /proc/meminfo 2>/dev/null | grep MemAvailable | tr -dc '0-9')
-    fps=$(dumpsys display 2>/dev/null | grep -m1 "mRefreshRate" | tr -dc '0-9.')
+    fps=$(dumpsys display 2>/dev/null | grep -m1 "renderFrameRate" | sed 's/.*renderFrameRate \([0-9]*\).*/\1/')
+    [ -z "$fps" ] && fps=$(dumpsys display 2>/dev/null | grep -m1 "refreshRate=" | sed 's/.*refreshRate=\([0-9]*\).*/\1/')
     gm=$(cat ${CONFIG_DIR}/gamemode_active 2>/dev/null)
     cg=$(cat ${CONFIG_DIR}/current_game 2>/dev/null)
     dp=$(cat ${CONFIG_DIR}/daemon.pid 2>/dev/null)
@@ -671,7 +675,7 @@ async function refreshStatus() {
       if (data.cpu) document.getElementById('statCPU').textContent = Math.round(parseInt(data.cpu) / 1000) + ' MHz';
       if (data.gpu) document.getElementById('statGPU').textContent = Math.round(parseInt(data.gpu) / 1000) + ' MHz';
       if (data.ram) document.getElementById('statRAM').textContent = Math.round(parseInt(data.ram) / 1024) + ' MB';
-      if (data.fps) document.getElementById('statFPS').textContent = Math.round(parseFloat(data.fps)) + ' Hz';
+      if (data.fps && !isNaN(data.fps)) document.getElementById('statFPS').textContent = parseInt(data.fps) + ' Hz';
       
       gmState = data.gm === '1';
       const chipGM = document.getElementById('chipGameMode');
