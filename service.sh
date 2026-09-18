@@ -19,22 +19,14 @@ sleep 5
 stop mi_thermald 2>/dev/null
 setprop ctl.stop mi_thermald 2>/dev/null
 
-if [ -f /sys/class/thermal/thermal_message/temp_state ]; then
-    chmod 666 /sys/class/thermal/thermal_message/temp_state 2>/dev/null
-    echo 0 > /sys/class/thermal/thermal_message/temp_state
-    chmod 444 /sys/class/thermal/thermal_message/temp_state 2>/dev/null
+# Prevent userspace thermal daemon hotspot cutoffs while preserving kernel hardware protection
+setprop persist.sys.thermal.mitigation 0 2>/dev/null
+setprop persist.vendor.thermal.config "" 2>/dev/null
 
-    mkdir -p /data/adb/tune
-    echo 0 > /data/adb/tune/zero_temp_state
-    chmod 444 /data/adb/tune/zero_temp_state
-    mount --bind /data/adb/tune/zero_temp_state /sys/class/thermal/thermal_message/temp_state 2>/dev/null
-fi
-
-# MTK PPM Thermal & Power Capping Disable
+# Allow high-performance PPM scaling while keeping emergency thermal trip points intact
 chmod 666 /proc/ppm/policy_status 2>/dev/null
-echo "4 0" > /proc/ppm/policy_status 2>/dev/null
-echo "3 0" > /proc/ppm/policy_status 2>/dev/null
-echo "9 0" > /proc/ppm/policy_status 2>/dev/null
+echo "3 0" > /proc/ppm/policy_status 2>/dev/null  # Disable power throttling cap
+echo "9 1" > /proc/ppm/policy_status 2>/dev/null  # Enable system boost policy
 
 # Hotspot protection settings
 settings put global hotspot_thermal_protect 0 2>/dev/null

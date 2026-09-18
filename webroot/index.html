@@ -648,20 +648,20 @@ async function loadPackages() {
 async function refreshStatus() {
   // Batch all sysfs and state reads into a single ultra-fast JSON exec to prevent WebUI stuttering
   const script = `
-    cpu=$(cat /sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq 2>/dev/null)
-    gpu=$(cat /sys/kernel/ged/hal/current_freqency 2>/dev/null | awk '{print $NF}')
+    cpu=$(cat /sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq 2>/dev/null | tr -dc '0-9')
+    gpu=$(cat /sys/kernel/ged/hal/current_freqency 2>/dev/null | awk '{print $NF}' | tr -dc '0-9')
     ram=$(cat /proc/meminfo 2>/dev/null | grep MemAvailable | tr -dc '0-9')
-    fps=$(dumpsys display 2>/dev/null | grep -m1 "renderFrameRate" | sed 's/.*renderFrameRate \([0-9]*\).*/\1/')
-    [ -z "$fps" ] && fps=$(dumpsys display 2>/dev/null | grep -m1 "refreshRate=" | sed 's/.*refreshRate=\([0-9]*\).*/\1/')
-    gm=$(cat ${CONFIG_DIR}/gamemode_active 2>/dev/null)
-    cg=$(cat ${CONFIG_DIR}/current_game 2>/dev/null)
-    dp=$(cat ${CONFIG_DIR}/daemon.pid 2>/dev/null)
+    fps=$(dumpsys display 2>/dev/null | grep -m1 "renderFrameRate" | sed 's/.*renderFrameRate \([0-9]*\).*/\1/' | tr -dc '0-9')
+    [ -z "$fps" ] && fps=$(dumpsys display 2>/dev/null | grep -m1 "refreshRate=" | sed 's/.*refreshRate=\([0-9]*\).*/\1/' | tr -dc '0-9')
+    gm=$(cat ${CONFIG_DIR}/gamemode_active 2>/dev/null | tr -dc '0-9')
+    cg=$(cat ${CONFIG_DIR}/current_game 2>/dev/null | tr -d '\r\n')
+    dp=$(cat ${CONFIG_DIR}/daemon.pid 2>/dev/null | tr -dc '0-9')
     alive=0
     [ -n "$dp" ] && kill -0 "$dp" 2>/dev/null && alive=1
-    gf=$(cat /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null)
-    tirq=$(grep -iE 'fts_ts|goodix|focaltech' /proc/interrupts 2>/dev/null | head -1 | awk '{print $1}' | tr -d ':')
+    gf=$(cat /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null | tr -dc '0-9')
+    tirq=$(grep -iE 'fts_ts|goodix|focaltech' /proc/interrupts 2>/dev/null | head -1 | awk '{print $1}' | tr -dc '0-9')
     aff=""
-    [ -n "$tirq" ] && aff=$(cat /proc/irq/$tirq/smp_affinity_list 2>/dev/null)
+    [ -n "$tirq" ] && aff=$(cat /proc/irq/$tirq/smp_affinity_list 2>/dev/null | tr -d '\r\n')
     
     echo "{\\"cpu\\": \\"$cpu\\", \\"gpu\\": \\"$gpu\\", \\"ram\\": \\"$ram\\", \\"fps\\": \\"$fps\\", \\"gm\\": \\"$gm\\", \\"cg\\": \\"$cg\\", \\"alive\\": $alive, \\"gf\\": \\"$gf\\", \\"aff\\": \\"$aff\\"}"
   `;

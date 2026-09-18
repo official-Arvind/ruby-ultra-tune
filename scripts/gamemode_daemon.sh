@@ -220,7 +220,7 @@ while true; do
         fi
     else
         if [ "$TOP_PKG" != "$CURRENT_GAME" ]; then
-            sleep 3
+            sleep 2
             TOP_PKG2=$(get_top_package)
             if [ -z "$TOP_PKG2" ] || [ "$TOP_PKG2" = "$CURRENT_GAME" ]; then
                 continue
@@ -232,17 +232,6 @@ while true; do
                 sleep 1
                 activate_game_mode "$TOP_PKG2"
             fi
-        else
-            # Continuous Enforcement: Check every 5 seconds to prevent battery drain
-            sleep 5
-            for uid in $(ps -A -o UID 2>/dev/null | grep -E '^[0-9]+$' | awk '$1 >= 10000' | sort -u); do
-                pkg=$(grep -m1 " $uid " /data/system/packages.list 2>/dev/null | awk '{print $1}')
-                [ -z "$pkg" ] && continue
-                [ "$pkg" = "$CURRENT_GAME" ] && continue
-                is_protected "$pkg" && continue
-                
-                am force-stop "$pkg" 2>/dev/null
-            done
         fi
     fi
 done
