@@ -28,7 +28,6 @@ com.google.android.gms
 com.google.android.gsf
 com.google.android.ext.services
 com.miui.powerkeeper
-com.xiaomi.joyose
 com.miui.home
 com.miui.securitycenter
 com.miui.miwallpaper
