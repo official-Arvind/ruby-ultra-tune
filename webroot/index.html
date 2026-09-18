@@ -387,16 +387,19 @@ let hasChanges = false;
 
 // ===== SHELL EXEC BRIDGE =====
 async function exec(cmd) {
-  if (typeof window.ksu !== 'undefined' && window.ksu.exec) {
-    return new Promise((resolve) => {
-      const result = window.ksu.exec(cmd);
-      try {
-        const parsed = JSON.parse(result);
-        resolve(parsed);
-      } catch(e) {
-        resolve({ errno: 0, stdout: result || '', stderr: '' });
+  const api = window.apatch || window.ksu;
+  if (typeof api !== 'undefined' && api.exec) {
+    try {
+      const result = await api.exec(cmd);
+      // Some API implementations return parsed JSON, others return string
+      if (typeof result === 'object') {
+        return result;
       }
-    });
+      return JSON.parse(result);
+    } catch(e) {
+      // In case JSON.parse fails or api.exec throws
+      return { errno: -1, stdout: '', stderr: String(e) };
+    }
   }
   // Fallback for testing in browser
   console.log("EXEC:", cmd);
@@ -496,8 +499,9 @@ async function saveConfig() {
   hasChanges = false;
   document.getElementById('saveBar').classList.remove('visible');
 
-  if (typeof window.ksu !== 'undefined' && window.ksu.toast) {
-    window.ksu.toast("Config saved! Game Mode daemon will pick it up automatically.");
+  const api = window.apatch || window.ksu;
+  if (typeof api !== 'undefined' && api.toast) {
+    api.toast("Config saved! Game Mode daemon will pick it up automatically.");
   }
 }
 
@@ -639,7 +643,8 @@ async function forceGameMode() {
     echo 0-1 > /dev/cpuset/background/cpus
     echo 3 > /proc/sys/vm/drop_caches
   '`);
-  if (window.ksu && window.ksu.toast) window.ksu.toast("Game Mode forced ON!");
+  const api = window.apatch || window.ksu;
+  if (api && api.toast) api.toast("Game Mode forced ON!");
   setTimeout(refreshStatus, 500);
 }
 
@@ -653,7 +658,8 @@ async function forceNormalMode() {
     echo 0-3 > /dev/cpuset/background/cpus
     echo 0 > ${CONFIG_DIR}/gamemode_active
   '`);
-  if (window.ksu && window.ksu.toast) window.ksu.toast("Normal mode restored.");
+  const api = window.apatch || window.ksu;
+  if (api && api.toast) api.toast("Normal mode restored.");
   setTimeout(refreshStatus, 500);
 }
 

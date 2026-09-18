@@ -5,4 +5,5 @@
 # Used by WebGUI to populate app selection lists
 # ==============================================================================
 
-pm list packages -3 2>/dev/null | sed 's/^package://' | sort
+# Use /system/bin/cmd for faster and more reliable package listing in root shells
+/system/bin/cmd package list packages -3 2>/dev/null | sed 's/^package://' | sort
