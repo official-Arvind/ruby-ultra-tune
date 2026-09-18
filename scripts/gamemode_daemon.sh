@@ -123,29 +123,15 @@ activate_game_mode() {
     echo 3 > /proc/sys/vm/drop_caches 2>/dev/null
     echo 1 > /sys/block/zram0/compact 2>/dev/null
 
-    # 7. Kill/Freeze non-essential background apps
+    # 7. Safe Zero-IPC Background App Killing
     local killed=0
-    for pkg in $(dumpsys activity processes 2>/dev/null | sed -n 's/.*packageName=\([^ ,}]*\).*/\1/p' | sort -u); do
+    for uid in $(ps -A -o UID 2>/dev/null | grep -E '^[0-9]+$' | awk '$1 >= 10000' | sort -u); do
+        local pkg=$(grep -m1 " $uid " /data/system/packages.list 2>/dev/null | awk '{print $1}')
+        [ -z "$pkg" ] && continue
         [ "$pkg" = "$game_pkg" ] && continue
         is_protected "$pkg" && continue
         
-        # Modern Freezing (Auditor Standard) avoids Android respawn storms
-        local frozen=0
-        local uid=$(dumpsys package "$pkg" 2>/dev/null | grep -E "^ *userId=" | head -1 | awk -F'=' '{print $2}' | awk '{print $1}')
-        if [ -n "$uid" ]; then
-            for freeze_file in /sys/fs/cgroup/uid_${uid}/pid_*/cgroup.freeze; do
-                if [ -f "$freeze_file" ]; then
-                    echo 1 > "$freeze_file" 2>/dev/null
-                    frozen=1
-                fi
-            done
-        fi
-        
-        # Fallback to force-stop if freezer is missing
-        if [ "$frozen" -eq 0 ]; then
-            am force-stop "$pkg" 2>/dev/null
-        fi
-        
+        am force-stop "$pkg" 2>/dev/null
         killed=$((killed + 1))
     done
 
@@ -238,23 +224,13 @@ while true; do
         else
             # Continuous Enforcement: Check every 5 seconds to prevent battery drain
             sleep 3
-            for pkg in $(dumpsys activity processes 2>/dev/null | sed -n 's/.*packageName=\([^ ,}]*\).*/\1/p' | sort -u); do
+            for uid in $(ps -A -o UID 2>/dev/null | grep -E '^[0-9]+$' | awk '$1 >= 10000' | sort -u); do
+                local pkg=$(grep -m1 " $uid " /data/system/packages.list 2>/dev/null | awk '{print $1}')
+                [ -z "$pkg" ] && continue
                 [ "$pkg" = "$CURRENT_GAME" ] && continue
                 is_protected "$pkg" && continue
                 
-                local frozen=0
-                local uid=$(dumpsys package "$pkg" 2>/dev/null | grep -E "^ *userId=" | head -1 | awk -F'=' '{print $2}' | awk '{print $1}')
-                if [ -n "$uid" ]; then
-                    for freeze_file in /sys/fs/cgroup/uid_${uid}/pid_*/cgroup.freeze; do
-                        if [ -f "$freeze_file" ]; then
-                            echo 1 > "$freeze_file" 2>/dev/null
-                            frozen=1
-                        fi
-                    done
-                fi
-                if [ "$frozen" -eq 0 ]; then
-                    am force-stop "$pkg" 2>/dev/null
-                fi
+                am force-stop "$pkg" 2>/dev/null
             done
         fi
     fi

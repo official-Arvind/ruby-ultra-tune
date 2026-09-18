@@ -643,19 +643,33 @@ async function loadPackages() {
 
 // ===== STATUS REFRESH =====
 async function refreshStatus() {
-  const script = `cpu=$(cat /sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq 2>/dev/null); gpu=$(cat /sys/kernel/ged/hal/current_freqency 2>/dev/null); ram=$(cat /proc/meminfo 2>/dev/null | grep MemAvailable | tr -dc '0-9'); fps=$(dumpsys display 2>/dev/null | grep -m1 "mRefreshRate" | tr -dc '0-9.'); gm=$(cat ${CONFIG_DIR}/gamemode_active 2>/dev/null); echo "{\\"cpu\\": \\"$cpu\\", \\"gpu\\": \\"$gpu\\", \\"ram\\": \\"$ram\\", \\"fps\\": \\"$fps\\", \\"gm\\": \\"$gm\\"}"`;
+  // Batch all sysfs and state reads into a single ultra-fast JSON exec to prevent WebUI stuttering
+  const script = `
+    cpu=$(cat /sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq 2>/dev/null)
+    gpu=$(cat /sys/kernel/ged/hal/current_freqency 2>/dev/null | awk '{print $NF}')
+    ram=$(cat /proc/meminfo 2>/dev/null | grep MemAvailable | tr -dc '0-9')
+    fps=$(dumpsys display 2>/dev/null | grep -m1 "mRefreshRate" | tr -dc '0-9.')
+    gm=$(cat ${CONFIG_DIR}/gamemode_active 2>/dev/null)
+    cg=$(cat ${CONFIG_DIR}/current_game 2>/dev/null)
+    dp=$(cat ${CONFIG_DIR}/daemon.pid 2>/dev/null)
+    alive=0
+    [ -n "$dp" ] && kill -0 "$dp" 2>/dev/null && alive=1
+    gf=$(cat /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null)
+    tirq=$(grep -iE 'fts_ts|goodix|focaltech' /proc/interrupts 2>/dev/null | head -1 | awk '{print $1}' | tr -d ':')
+    aff=""
+    [ -n "$tirq" ] && aff=$(cat /proc/irq/$tirq/smp_affinity_list 2>/dev/null)
+    
+    echo "{\\"cpu\\": \\"$cpu\\", \\"gpu\\": \\"$gpu\\", \\"ram\\": \\"$ram\\", \\"fps\\": \\"$fps\\", \\"gm\\": \\"$gm\\", \\"cg\\": \\"$cg\\", \\"alive\\": $alive, \\"gf\\": \\"$gf\\", \\"aff\\": \\"$aff\\"}"
+  `;
   
-  const res = await exec(script);
+  const res = await exec(script.replace(/\n/g, ' '));
   let gmState = false;
   
   if (res.stdout) {
     try {
       const data = JSON.parse(res.stdout);
       if (data.cpu) document.getElementById('statCPU').textContent = Math.round(parseInt(data.cpu) / 1000) + ' MHz';
-      if (data.gpu) {
-        const parts = data.gpu.split(' ');
-        document.getElementById('statGPU').textContent = Math.round(parseInt(parts[parts.length - 1] || data.gpu) / 1000) + ' MHz';
-      }
+      if (data.gpu) document.getElementById('statGPU').textContent = Math.round(parseInt(data.gpu) / 1000) + ' MHz';
       if (data.ram) document.getElementById('statRAM').textContent = Math.round(parseInt(data.ram) / 1024) + ' MB';
       if (data.fps) document.getElementById('statFPS').textContent = Math.round(parseFloat(data.fps)) + ' Hz';
       
@@ -665,85 +679,58 @@ async function refreshStatus() {
       document.getElementById('statGMState').className = 'stat-value ' + (gmState ? 'green' : '');
       chipGM.className = gmState ? 'chip game' : 'chip';
       chipGM.querySelector('.dot').nextSibling.textContent = gmState ? ' Game Mode ON' : ' Game Mode Off';
-    } catch(e) { console.error("JSON parse error in refreshStatus", e); }
+      
+      if (gmState && data.cg) {
+        document.getElementById('statGMGame').textContent = readableNameFallback(data.cg.trim());
+        document.getElementById('statGMGame').style.fontSize = '14px';
+      } else {
+        document.getElementById('statGMGame').textContent = '—';
+      }
+      
+      const chipDaemon = document.getElementById('chipDaemon');
+      if (data.alive) {
+        chipDaemon.className = 'chip active';
+      } else {
+        chipDaemon.className = 'chip';
+        chipDaemon.querySelector('.dot').nextSibling.textContent = ' Daemon Stopped';
+      }
+      
+      if (data.gf) document.getElementById('statGPUFloor').textContent = Math.round(parseInt(data.gf) / 1000) + ' MHz';
+      if (data.aff) document.getElementById('statTouchIRQ').textContent = 'Core ' + data.aff.trim();
+      
+      // SchedBoost is removed in Android 14+
+      if (document.getElementById('statSchedBoost')) document.getElementById('statSchedBoost').textContent = '—';
+      
+    } catch(e) {}
   }
 
-  if (gmState) {
-    const cg = await exec(`cat ${CONFIG_DIR}/current_game 2>/dev/null`);
-    document.getElementById('statGMGame').textContent = cg.stdout ? readableName(cg.stdout.trim()) : '—';
-    document.getElementById('statGMGame').style.fontSize = '14px';
-  } else {
-    document.getElementById('statGMGame').textContent = '—';
-  }
-
-  // Daemon status
-  const dp = await exec(`cat ${CONFIG_DIR}/daemon.pid 2>/dev/null`);
-  const chipDaemon = document.getElementById('chipDaemon');
-  if (dp.stdout && dp.stdout.trim()) {
-    const alive = await exec(`kill -0 ${dp.stdout.trim()} 2>/dev/null && echo alive`);
-    if (alive.stdout && alive.stdout.includes('alive')) {
-      chipDaemon.className = 'chip active';
-    } else {
-      chipDaemon.className = 'chip';
-      chipDaemon.querySelector('.dot').nextSibling.textContent = ' Daemon Stopped';
-    }
-  }
-
-  // GPU Floor
-  const gpuFloor = await exec("cat /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null");
-  if (gpuFloor.stdout) {
-    document.getElementById('statGPUFloor').textContent = Math.round(parseInt(gpuFloor.stdout.trim()) / 1000) + ' MHz';
-  }
-
-  // SchedBoost
-  const sb = await exec("cat /dev/stune/top-app/schedtune.boost 2>/dev/null");
-  if (sb.stdout) document.getElementById('statSchedBoost').textContent = sb.stdout.trim();
-
-  // Touch IRQ
-  const tirq = await exec("grep -iE 'fts_ts|goodix|focaltech' /proc/interrupts 2>/dev/null | head -1 | awk '{print $1}' | tr -d ':'");
-  if (tirq.stdout && tirq.stdout.trim()) {
-    const aff = await exec(`cat /proc/irq/${tirq.stdout.trim()}/smp_affinity_list 2>/dev/null`);
-    document.getElementById('statTouchIRQ').textContent = aff.stdout ? 'Core ' + aff.stdout.trim() : '—';
-  }
-
-  // Uclamp
-  const uc = await exec("cat /proc/perfmgr/boost_ctrl/eas_ctrl/perf_ta_uclamp_min 2>/dev/null");
-  if (uc.stdout) document.getElementById('statUclamp').textContent = uc.stdout.trim();
-
-  // Log
-  const log = await exec(`tail -20 ${CONFIG_DIR}/gamemode.log 2>/dev/null`);
-  document.getElementById('logBox').textContent = log.stdout ? log.stdout.trim() : 'No log entries yet. Start a game to see activity.';
+  setTimeout(refreshStatus, gmState ? 2000 : 5000);
 }
 
 // ===== QUICK ACTIONS =====
 async function forceGameMode() {
   await exec(`sh -c '
-    echo 50 > /dev/stune/top-app/schedtune.boost
     echo 890000 > /sys/module/ged/parameters/gpu_cust_boost_freq
     echo 1 > /sys/module/ged/parameters/gx_game_mode
     echo 1 > /sys/module/ged/parameters/boost_gpu_enable
-    echo 300 > /proc/perfmgr/boost_ctrl/eas_ctrl/perf_ta_uclamp_min
+    echo 50 > /proc/perfmgr/boost_ctrl/eas_ctrl/perfserv_ta_boost
     echo 0-1 > /dev/cpuset/background/cpus
-    echo 3 > /proc/sys/vm/drop_caches
+    echo 1 > ${CONFIG_DIR}/gamemode_active
   '`);
   const api = window.apatch || window.ksu;
   if (api && api.toast) api.toast("Game Mode forced ON!");
-  setTimeout(refreshStatus, 500);
 }
 
 async function forceNormalMode() {
   await exec(`sh -c '
-    echo 10 > /dev/stune/top-app/schedtune.boost
     echo 509000 > /sys/module/ged/parameters/gpu_cust_boost_freq
     echo 0 > /sys/module/ged/parameters/gx_game_mode
     echo 0 > /sys/module/ged/parameters/boost_gpu_enable
-    echo 120 > /proc/perfmgr/boost_ctrl/eas_ctrl/perf_ta_uclamp_min
     echo 0-3 > /dev/cpuset/background/cpus
     echo 0 > ${CONFIG_DIR}/gamemode_active
   '`);
   const api = window.apatch || window.ksu;
   if (api && api.toast) api.toast("Normal mode restored.");
-  setTimeout(refreshStatus, 500);
 }
 
 function toggleSetting(el) {

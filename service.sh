@@ -105,11 +105,6 @@ echo 0-5 > /dev/cpuset/system-background/cpus 2>/dev/null
 echo 0-7 > /dev/cpuset/top-app/cpus 2>/dev/null
 echo 0-7 > /dev/cpuset/foreground/cpus 2>/dev/null
 
-echo 10 > /dev/stune/top-app/schedtune.boost 2>/dev/null
-echo 1 > /dev/stune/top-app/schedtune.prefer_idle 2>/dev/null
-echo 5 > /dev/stune/foreground/schedtune.boost 2>/dev/null
-echo 0 > /dev/stune/background/schedtune.boost 2>/dev/null
-
 echo 1 > /proc/perfmgr/syslimiter/syslimiter_force_disable 2>/dev/null
 
 if [ -d "/proc/perfmgr/boost_ctrl/eas_ctrl" ]; then
