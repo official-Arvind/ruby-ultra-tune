@@ -391,23 +391,56 @@ async function exec(cmd) {
   if (typeof api !== 'undefined' && api.exec) {
     try {
       const result = await api.exec(cmd);
-      // Some API implementations return parsed JSON, others return string
-      if (typeof result === 'object') {
-        return result;
+      if (typeof result === 'object') return result;
+      try {
+        const parsed = JSON.parse(result);
+        if (parsed && typeof parsed === 'object' && ('stdout' in parsed || 'errno' in parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        // Not JSON! APatch might be returning raw stdout
+        return { errno: 0, stdout: String(result), stderr: '' };
       }
-      return JSON.parse(result);
+      return { errno: 0, stdout: String(result), stderr: '' };
     } catch(e) {
-      // In case JSON.parse fails or api.exec throws
-      if (typeof api !== 'undefined' && api.toast) api.toast("Exec Error: " + String(e));
-      else alert("Exec Error: " + String(e));
       return { errno: -1, stdout: '', stderr: String(e) };
     }
   }
-  alert("Bridge not found! window.apatch=" + typeof window.apatch + ", window.ksu=" + typeof window.ksu);
-  // Fallback for testing in browser
-  console.log("EXEC:", cmd);
   return { errno: 0, stdout: '', stderr: '' };
 }
+
+// ===== PULL TO REFRESH =====
+let ptrStartY = 0;
+let isPulling = false;
+const ptrDiv = document.createElement('div');
+ptrDiv.innerHTML = '↻ Release to refresh';
+ptrDiv.style.cssText = 'text-align:center; padding:15px; color:var(--ruby); display:none; font-weight:bold; font-size:14px; position:absolute; top:60px; width:100%; z-index:99; background:var(--bg); border-bottom:1px solid var(--border);';
+document.body.prepend(ptrDiv);
+
+document.addEventListener('touchstart', e => {
+  if (window.scrollY <= 5) {
+    ptrStartY = e.touches[0].clientY;
+    isPulling = true;
+  }
+}, {passive: true});
+
+document.addEventListener('touchmove', e => {
+  if (!isPulling) return;
+  const y = e.touches[0].clientY;
+  if (y - ptrStartY > 80) {
+    ptrDiv.style.display = 'block';
+  } else {
+    ptrDiv.style.display = 'none';
+  }
+}, {passive: true});
+
+document.addEventListener('touchend', e => {
+  if (isPulling && ptrDiv.style.display === 'block') {
+    ptrDiv.innerHTML = '↻ Refreshing...';
+    setTimeout(() => location.reload(), 300);
+  }
+  isPulling = false;
+});
 
 // ===== TAB SWITCHING =====
 function switchTab(name, btn) {
