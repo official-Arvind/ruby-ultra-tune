@@ -562,11 +562,27 @@ async function loadConfig() {
 
 // ===== LOAD PACKAGES =====
 async function loadPackages() {
-  const res = await exec(`sh ${MODDIR}/scripts/list_apps.sh`);
-  if (res.stdout) {
-    allPackages = res.stdout.trim().split(',').filter(l => l.trim()).map(l => l.trim());
-  } else {
-    allPackages = [];
+  allPackages = [];
+  try {
+    const api = window.apatch || window.ksu;
+    if (api && api.listPackages) {
+      let raw = await api.listPackages();
+      if (typeof raw === 'string') raw = JSON.parse(raw);
+      // It might be an array of strings, or array of objects with packageName
+      if (Array.isArray(raw)) {
+        allPackages = raw.map(p => typeof p === 'string' ? p : p.packageName);
+      }
+    }
+  } catch (e) {
+    console.log("Native listPackages failed:", e);
+  }
+
+  // Fallback to our shell script if native API is missing or empty
+  if (allPackages.length === 0) {
+    const res = await exec(`su -c 'sh ${MODDIR}/scripts/list_apps.sh'`);
+    if (res.stdout) {
+      allPackages = res.stdout.trim().split(',').filter(l => l.trim()).map(l => l.trim());
+    }
   }
   
   if (allPackages.length === 0) {
