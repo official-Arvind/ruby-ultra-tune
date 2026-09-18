@@ -26,6 +26,7 @@ setprop persist.vendor.thermal.config "" 2>/dev/null
 # Allow high-performance PPM scaling while keeping emergency thermal trip points intact
 chmod 666 /proc/ppm/policy_status 2>/dev/null
 echo "3 0" > /proc/ppm/policy_status 2>/dev/null  # Disable power throttling cap
+echo "4 1" > /proc/ppm/policy_status 2>/dev/null  # Keep hardware thermal protection active
 echo "9 1" > /proc/ppm/policy_status 2>/dev/null  # Enable system boost policy
 
 # Hotspot protection settings
@@ -197,43 +198,19 @@ OLD_PID=$(cat "$MODDIR/config/daemon.pid" 2>/dev/null)
 nohup sh "$MODDIR/scripts/gamemode_daemon.sh" > /dev/null 2>&1 &
 
 # ==============================================================================
-# 11. BACKGROUND WATCHDOG
+# 11. BACKGROUND WATCHDOG (Lightweight core keeper)
 # ==============================================================================
 nohup sh -c '
-GM_STATE="'"$MODDIR"'/config/gamemode_active"
 while true; do
-    sleep 10
-    # Re-kill mi_thermald (respawns via init)
-    stop mi_thermald 2>/dev/null
-    # Re-disable PPM thermal policies
-    echo "4 0" > /proc/ppm/policy_status 2>/dev/null
-    echo "3 0" > /proc/ppm/policy_status 2>/dev/null
-    echo "9 0" > /proc/ppm/policy_status 2>/dev/null
-    # Re-disable SysLimiter
-    echo 1 > /proc/perfmgr/syslimiter/syslimiter_force_disable 2>/dev/null
-    # Check if game mode is active — respect gaming profiles
-    IS_GAMING=$(cat "$GM_STATE" 2>/dev/null)
-    if [ "$IS_GAMING" = "1" ]; then
-        # Game mode: keep aggressive boost
-        echo 50000 > /sys/devices/system/cpu/cpufreq/schedutil/down_rate_limit_us 2>/dev/null
-        echo 300 > /proc/perfmgr/boost_ctrl/eas_ctrl/perf_ta_uclamp_min 2>/dev/null
-        echo 50 > /proc/perfmgr/boost_ctrl/eas_ctrl/perfserv_ta_boost 2>/dev/null
-        echo 890000 > /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null
-    else
-        # Normal mode
-        echo 40000 > /sys/devices/system/cpu/cpufreq/schedutil/down_rate_limit_us 2>/dev/null
-        echo 120 > /proc/perfmgr/boost_ctrl/eas_ctrl/perf_ta_uclamp_min 2>/dev/null
-        echo 60 > /proc/perfmgr/boost_ctrl/eas_ctrl/perf_fg_uclamp_min 2>/dev/null
-        echo 10 > /proc/perfmgr/boost_ctrl/eas_ctrl/perfserv_ta_boost 2>/dev/null
-        echo 509000 > /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null
-    fi
-    echo 1 > /sys/module/ged/parameters/ged_boost_enable 2>/dev/null
-    # Keep big cores online
+    sleep 30
+    # Keep big cores 6 & 7 online
     for c in 6 7; do
         if [ "$(cat /sys/devices/system/cpu/cpu$c/online 2>/dev/null)" = "0" ]; then
             echo 1 > /sys/devices/system/cpu/cpu$c/online 2>/dev/null
         fi
     done
+    # Ensure syslimiter remains disabled
+    echo 1 > /proc/perfmgr/syslimiter/syslimiter_force_disable 2>/dev/null
 done
 ' > /dev/null 2>&1 &
 

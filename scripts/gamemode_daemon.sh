@@ -116,8 +116,8 @@ activate_game_mode() {
     echo 0-1 > /dev/cpuset/background/cpus 2>/dev/null
     echo 0-3 > /dev/cpuset/system-background/cpus 2>/dev/null
 
-    # 3. GPU boost to 890 MHz
-    echo 890000 > /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null
+    # 3. GPU boost to hardware maximum 950 MHz (OPP 0)
+    echo 950000 > /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null
     echo 1 > /sys/module/ged/parameters/gx_game_mode 2>/dev/null
     echo 1 > /sys/module/ged/parameters/boost_gpu_enable 2>/dev/null
     echo 1 > /sys/module/ged/parameters/gx_boost_on 2>/dev/null
@@ -145,17 +145,13 @@ activate_game_mode() {
         killed=$((killed + 1))
     done
 
-    # 8. Second cache drop
-    sleep 1
-    echo 3 > /proc/sys/vm/drop_caches 2>/dev/null
-
     local ram_mb
     ram_mb=$(grep MemAvailable /proc/meminfo | awk '{print int($2/1024)}')
 
-    log "GAME MODE ACTIVE — killed $killed apps, GPU@890MHz, RAM=${ram_mb}MB free"
+    log "GAME MODE ACTIVE — killed $killed apps, GPU@950MHz, RAM=${ram_mb}MB free"
 
     # 9. Show notification
-    notify "⚡ Game Mode ON" "GPU boosted to 890 MHz
+    notify "⚡ Game Mode ON" "GPU boosted to 950 MHz
 $killed background apps cleared
 ${ram_mb}MB RAM available for gaming"
 }
