@@ -398,9 +398,12 @@ async function exec(cmd) {
       return JSON.parse(result);
     } catch(e) {
       // In case JSON.parse fails or api.exec throws
+      if (typeof api !== 'undefined' && api.toast) api.toast("Exec Error: " + String(e));
+      else alert("Exec Error: " + String(e));
       return { errno: -1, stdout: '', stderr: String(e) };
     }
   }
+  alert("Bridge not found! window.apatch=" + typeof window.apatch + ", window.ksu=" + typeof window.ksu);
   // Fallback for testing in browser
   console.log("EXEC:", cmd);
   return { errno: 0, stdout: '', stderr: '' };
