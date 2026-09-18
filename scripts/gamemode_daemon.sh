@@ -129,12 +129,29 @@ activate_game_mode() {
     echo 3 > /proc/sys/vm/drop_caches 2>/dev/null
     echo 1 > /sys/block/zram0/compact 2>/dev/null
 
-    # 7. Kill non-essential background apps
+    # 7. Kill/Freeze non-essential background apps
     local killed=0
     for pkg in $(dumpsys activity processes 2>/dev/null | sed -n 's/.*packageName=\([^ ,}]*\).*/\1/p' | sort -u); do
         [ "$pkg" = "$game_pkg" ] && continue
         is_protected "$pkg" && continue
-        am force-stop "$pkg" 2>/dev/null
+        
+        # Modern Freezing (Auditor Standard) avoids Android respawn storms
+        local frozen=0
+        local uid=$(dumpsys package "$pkg" 2>/dev/null | grep -E "^ *userId=" | head -1 | awk -F'=' '{print $2}' | awk '{print $1}')
+        if [ -n "$uid" ]; then
+            for freeze_file in /sys/fs/cgroup/uid_${uid}/pid_*/cgroup.freeze; do
+                if [ -f "$freeze_file" ]; then
+                    echo 1 > "$freeze_file" 2>/dev/null
+                    frozen=1
+                fi
+            done
+        fi
+        
+        # Fallback to force-stop if freezer is missing
+        if [ "$frozen" -eq 0 ]; then
+            am force-stop "$pkg" 2>/dev/null
+        fi
+        
         killed=$((killed + 1))
     done
 
@@ -202,6 +219,12 @@ log "Daemon started (PID: $$)"
 while true; do
     sleep 2
 
+    # Battery Saving: Pause polling when screen is off (Doze mode)
+    if dumpsys power 2>/dev/null | grep -q "mWakefulness=Asleep"; then
+        sleep 5
+        continue
+    fi
+
     TOP_PKG=$(get_top_package)
     [ -z "$TOP_PKG" ] && continue
 
@@ -229,7 +252,20 @@ while true; do
             for pkg in $(dumpsys activity processes 2>/dev/null | sed -n 's/.*packageName=\([^ ,}]*\).*/\1/p' | sort -u); do
                 [ "$pkg" = "$CURRENT_GAME" ] && continue
                 is_protected "$pkg" && continue
-                am force-stop "$pkg" 2>/dev/null
+                
+                local frozen=0
+                local uid=$(dumpsys package "$pkg" 2>/dev/null | grep -E "^ *userId=" | head -1 | awk -F'=' '{print $2}' | awk '{print $1}')
+                if [ -n "$uid" ]; then
+                    for freeze_file in /sys/fs/cgroup/uid_${uid}/pid_*/cgroup.freeze; do
+                        if [ -f "$freeze_file" ]; then
+                            echo 1 > "$freeze_file" 2>/dev/null
+                            frozen=1
+                        fi
+                    done
+                fi
+                if [ "$frozen" -eq 0 ]; then
+                    am force-stop "$pkg" 2>/dev/null
+                fi
             done
         fi
     fi

@@ -643,49 +643,30 @@ async function loadPackages() {
 
 // ===== STATUS REFRESH =====
 async function refreshStatus() {
-  // CPU
-  const cpu = await exec("cat /sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq 2>/dev/null");
-  if (cpu.stdout) {
-    const mhz = Math.round(parseInt(cpu.stdout.trim()) / 1000);
-    document.getElementById('statCPU').textContent = mhz + ' MHz';
-  }
-
-  // GPU
-  const gpu = await exec("cat /sys/module/ged/parameters/gpu_loading 2>/dev/null");
-  const gpuFreq = await exec("cat /sys/kernel/ged/hal/current_freqency 2>/dev/null");
-  if (gpuFreq.stdout) {
-    const parts = gpuFreq.stdout.trim().split(' ');
-    const mhz = Math.round(parseInt(parts[parts.length - 1]) / 1000);
-    document.getElementById('statGPU').textContent = mhz + ' MHz';
-  }
-
-  // RAM
-  const mem = await exec("cat /proc/meminfo 2>/dev/null | head -3");
-  if (mem.stdout) {
-    const lines = mem.stdout.trim().split('\n');
-    for (const line of lines) {
-      if (line.includes('MemAvailable')) {
-        const kb = parseInt(line.replace(/[^0-9]/g, ''));
-        document.getElementById('statRAM').textContent = Math.round(kb / 1024) + ' MB';
+  const script = `cpu=$(cat /sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq 2>/dev/null); gpu=$(cat /sys/kernel/ged/hal/current_freqency 2>/dev/null); ram=$(cat /proc/meminfo 2>/dev/null | grep MemAvailable | tr -dc '0-9'); fps=$(dumpsys display 2>/dev/null | grep -m1 "mRefreshRate" | tr -dc '0-9.'); gm=$(cat ${CONFIG_DIR}/gamemode_active 2>/dev/null); echo "{\\"cpu\\": \\"$cpu\\", \\"gpu\\": \\"$gpu\\", \\"ram\\": \\"$ram\\", \\"fps\\": \\"$fps\\", \\"gm\\": \\"$gm\\"}"`;
+  
+  const res = await exec(script);
+  let gmState = false;
+  
+  if (res.stdout) {
+    try {
+      const data = JSON.parse(res.stdout);
+      if (data.cpu) document.getElementById('statCPU').textContent = Math.round(parseInt(data.cpu) / 1000) + ' MHz';
+      if (data.gpu) {
+        const parts = data.gpu.split(' ');
+        document.getElementById('statGPU').textContent = Math.round(parseInt(parts[parts.length - 1] || data.gpu) / 1000) + ' MHz';
       }
-    }
+      if (data.ram) document.getElementById('statRAM').textContent = Math.round(parseInt(data.ram) / 1024) + ' MB';
+      if (data.fps) document.getElementById('statFPS').textContent = Math.round(parseFloat(data.fps)) + ' Hz';
+      
+      gmState = data.gm === '1';
+      const chipGM = document.getElementById('chipGameMode');
+      document.getElementById('statGMState').textContent = gmState ? 'ON' : 'OFF';
+      document.getElementById('statGMState').className = 'stat-value ' + (gmState ? 'green' : '');
+      chipGM.className = gmState ? 'chip game' : 'chip';
+      chipGM.querySelector('.dot').nextSibling.textContent = gmState ? ' Game Mode ON' : ' Game Mode Off';
+    } catch(e) { console.error("JSON parse error in refreshStatus", e); }
   }
-
-  // Display Hz
-  const fps = await exec("dumpsys display 2>/dev/null | grep -m1 'renderFrameRate\\|mRefreshRate'");
-  if (fps.stdout) {
-    const match = fps.stdout.match(/(\d+\.?\d*)/);
-    if (match) document.getElementById('statFPS').textContent = Math.round(parseFloat(match[1])) + ' Hz';
-  }
-
-  // Game Mode State
-  const gm = await exec(`cat ${CONFIG_DIR}/gamemode_active 2>/dev/null`);
-  const gmState = gm.stdout && gm.stdout.trim() === '1';
-  const chipGM = document.getElementById('chipGameMode');
-  document.getElementById('statGMState').textContent = gmState ? 'ON' : 'OFF';
-  document.getElementById('statGMState').className = 'stat-value ' + (gmState ? 'green' : '');
-  chipGM.className = gmState ? 'chip game' : 'chip';
-  chipGM.querySelector('.dot').nextSibling.textContent = gmState ? ' Game Mode ON' : ' Game Mode Off';
 
   if (gmState) {
     const cg = await exec(`cat ${CONFIG_DIR}/current_game 2>/dev/null`);
