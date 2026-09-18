@@ -243,8 +243,13 @@ body {
 
 <!-- HEADER -->
 <div class="header">
-  <h1><span>Ruby</span> Ultra Tune <small style="font-size:12px;color:var(--text3)">v3.0</small></h1>
-  <div class="subtitle">by Arvind Ji — MT6877 Dimensity 1080</div>
+  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div>
+      <h1><span>Ruby</span> Ultra Tune <small style="font-size:12px;color:var(--text3)">v3.0</small></h1>
+      <div class="subtitle">by Arvind Ji — MT6877 Dimensity 1080</div>
+    </div>
+    <div style="font-size: 24px; cursor: pointer;" onclick="location.reload()" title="Refresh">🔄</div>
+  </div>
   <div class="status-row">
     <div class="chip active" id="chipDaemon"><span class="dot"></span> Daemon Running</div>
     <div class="chip" id="chipGameMode"><span class="dot"></span> Game Mode Off</div>
@@ -559,9 +564,14 @@ async function loadConfig() {
 async function loadPackages() {
   const res = await exec(`sh ${MODDIR}/scripts/list_apps.sh`);
   if (res.stdout) {
-    allPackages = res.stdout.trim().split('\n').filter(l => l.trim()).map(l => l.trim());
+    allPackages = res.stdout.trim().split(',').filter(l => l.trim()).map(l => l.trim());
+  } else {
+    allPackages = [];
   }
-
+  
+  if (allPackages.length === 0) {
+    allPackages = ["Error_fetching_apps"];
+  }
   document.getElementById('gamesListLoading').style.display = 'none';
   document.getElementById('dnkListLoading').style.display = 'none';
 
