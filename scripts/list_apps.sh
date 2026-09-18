@@ -10,4 +10,3 @@
 ls -1 /data/data 2>/dev/null | grep "\." | while read pkg; do
     echo -n "$pkg,"
 done
-echo ""

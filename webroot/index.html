@@ -566,7 +566,7 @@ async function loadPackages() {
   try {
     const api = window.apatch || window.ksu;
     if (api && api.listPackages) {
-      let raw = await api.listPackages();
+      let raw = await api.listPackages("all");
       if (typeof raw === 'string') raw = JSON.parse(raw);
       // It might be an array of strings, or array of objects with packageName
       if (Array.isArray(raw)) {
