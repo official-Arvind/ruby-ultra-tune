@@ -77,45 +77,29 @@ is_game() {
 
 is_protected() {
     local p="$1"
+    [ -z "$p" ] && return 0
     
-    # 1. Core Android & UI
-    [ "$p" = "android" ] && return 0
-    [ "$p" = "com.android.systemui" ] && return 0
-    [ "$p" = "com.miui.home" ] && return 0
+    # 1. Never touch current game or any registered game
+    [ "$p" = "$CURRENT_GAME" ] && return 0
+    grep -qxF "$p" "$GAMES_LIST" 2>/dev/null && return 0
     
-    # 2. Xiaomi Core & Joyose (Required for Game Turbo)
-    [ "$p" = "com.miui.securitycenter" ] && return 0
-    [ "$p" = "com.xiaomi.joyose" ] && return 0
-    [ "$p" = "com.xiaomi.xmsf" ] && return 0
-    [ "$p" = "com.xiaomi.finddevice" ] && return 0
-    
-    # 3. Google Play Services & Billing (CRITICAL for Game Logins)
-    [ "$p" = "com.google.android.gms" ] && return 0
-    [ "$p" = "com.android.vending" ] && return 0
-    [ "$p" = "com.google.android.gsf" ] && return 0
-    
-    # 4. Input Methods (Keyboards)
-    [ "$p" = "com.google.android.inputmethod.latin" ] && return 0
-    [ "$p" = "com.touchtype.swiftkey" ] && return 0
-    [ "$p" = "com.iflytek.inputmethod.miui" ] && return 0
-    [ "$p" = "com.baidu.input_mi" ] && return 0
-    
-    # 5. User Whitelist (WebUI)
+    # 2. User Whitelist (WebUI Do Not Kill)
     grep -qxF "$p" "$DNK_LIST" 2>/dev/null && return 0
     
-    # 6. System UIDs (<10000)
-    local uid
-    uid=$(dumpsys package "$p" 2>/dev/null | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -1)
-    [ -n "$uid" ] && [ "$uid" -lt 10000 ] && return 0
+    # 3. System, Google, Xiaomi, MediaTek, Tencent, Biometric, and Input services
+    case "$p" in
+        android|com.android.*|com.google.*|com.miui.*|com.xiaomi.*|com.mediatek.*|com.tencent.*|me.bmax.apatch|org.mipay.*|org.ifaa.*|com.touchtype.swiftkey|com.baidu.input_mi|com.iflytek.*|*soter*)
+            return 0
+            ;;
+    esac
     
     return 1
 }
 
 get_top_package() {
-    # Modern ultra-light foreground app check (Auditor Standard)
-    # Avoids heavy IPC dumpsys activity parsing
     local raw
-    raw=$(dumpsys window 2>/dev/null | grep -i mcurrentfocus | head -1)
+    # Check both mCurrentFocus and mFocusedApp to handle splash activity transitions seamlessly
+    raw=$(dumpsys window 2>/dev/null | grep -E "mCurrentFocus|mFocusedApp" | grep "u0 " | head -1)
     [ -z "$raw" ] && return
     echo "$raw" | sed 's/.*u0 \([^/]*\).*/\1/'
 }
@@ -250,9 +234,9 @@ while true; do
             fi
         else
             # Continuous Enforcement: Check every 5 seconds to prevent battery drain
-            sleep 3
+            sleep 5
             for uid in $(ps -A -o UID 2>/dev/null | grep -E '^[0-9]+$' | awk '$1 >= 10000' | sort -u); do
-                local pkg=$(grep -m1 " $uid " /data/system/packages.list 2>/dev/null | awk '{print $1}')
+                pkg=$(grep -m1 " $uid " /data/system/packages.list 2>/dev/null | awk '{print $1}')
                 [ -z "$pkg" ] && continue
                 [ "$pkg" = "$CURRENT_GAME" ] && continue
                 is_protected "$pkg" && continue
