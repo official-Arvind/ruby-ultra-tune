@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ruby Ultra Tune</title>
+<style>
+@import url("https://mui.kernelsu.org/internal/insets.css");
+
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #242424;
+  --surface3: #2e2e2e;
+  --ruby: #e91e63;
+  --ruby-dim: #880e4f;
+  --ruby-glow: rgba(233,30,99,0.15);
+  --green: #00e676;
+  --green-dim: rgba(0,230,118,0.12);
+  --amber: #ffab00;
+  --text: #f5f5f5;
+  --text2: #aaaaaa;
+  --text3: #777777;
+  --border: #333333;
+  --radius: 14px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-top: var(--safe-area-inset-top, 0px);
+  padding-bottom: calc(68px + var(--safe-area-inset-bottom, 0px));
+  overflow-x: hidden;
+}
+
+/* ===== HEADER ===== */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: linear-gradient(135deg, var(--bg) 0%, #1a0a10 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px 12px;
+  backdrop-filter: blur(20px);
+}
+.header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.header h1 span { color: var(--ruby); }
+.header .subtitle { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.header .status-row {
+  display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+  background: var(--surface2); color: var(--text2);
+}
+.chip.active { background: var(--green-dim); color: var(--green); }
+.chip.game { background: var(--ruby-glow); color: var(--ruby); }
+.chip .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+
+/* ===== TABS ===== */
+.tab-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-area-inset-bottom, 0px);
+}
+.tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 10px 0 8px; gap: 4px;
+  font-size: 11px; color: var(--text3);
+  cursor: pointer; transition: color 0.2s;
+  background: none; border: none; font-family: inherit;
+}
+.tab.active { color: var(--ruby); }
+.tab svg { width: 22px; height: 22px; }
+
+/* ===== CONTENT ===== */
+.content { padding: 12px 16px 20px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ===== SEARCH ===== */
+.search-bar {
+  position: sticky; top: 80px; z-index: 50;
+  margin-bottom: 12px;
+}
+.search-bar input {
+  width: 100%; padding: 12px 16px 12px 42px;
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 14px; outline: none;
+  transition: border-color 0.2s;
+}
+.search-bar input:focus { border-color: var(--ruby); }
+.search-bar input::placeholder { color: var(--text3); }
+.search-bar svg {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; color: var(--text3);
+}
+
+/* ===== APP LIST ===== */
+.app-list { display: flex; flex-direction: column; gap: 2px; }
+.app-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius);
+  background: var(--surface); cursor: pointer;
+  transition: background 0.15s;
+}
+.app-item:active { background: var(--surface3); }
+.app-item.checked { background: var(--ruby-glow); }
+.app-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--surface2); flex-shrink: 0;
+  object-fit: cover;
+}
+.app-info { flex: 1; min-width: 0; }
+.app-name {
+  font-size: 14px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.app-pkg {
+  font-size: 11px; color: var(--text3); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.checkbox {
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 2px solid var(--text3); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.app-item.checked .checkbox {
+  background: var(--ruby); border-color: var(--ruby);
+}
+.checkbox svg { width: 14px; height: 14px; color: white; opacity: 0; transition: opacity 0.2s; }
+.app-item.checked .checkbox svg { opacity: 1; }
+
+/* ===== STATUS CARDS ===== */
+.card {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 16px; margin-bottom: 10px;
+}
+.card-title {
+  font-size: 13px; color: var(--text3); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 10px; font-weight: 700;
+}
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat {
+  background: var(--surface2); border-radius: 10px;
+  padding: 12px; text-align: center;
+}
+.stat-value { font-size: 20px; font-weight: 700; color: var(--ruby); }
+.stat-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.stat-value.green { color: var(--green); }
+.stat-value.amber { color: var(--amber); }
+
+/* ===== SAVE BAR ===== */
+.save-bar {
+  position: fixed; bottom: 72px; left: 16px; right: 16px; z-index: 90;
+  display: none; animation: slideUp 0.3s ease;
+}
+.save-bar.visible { display: block; }
+.save-btn {
+  width: 100%; padding: 14px;
+  background: var(--ruby); color: white;
+  border: none; border-radius: var(--radius);
+  font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  box-shadow: 0 4px 20px rgba(233,30,99,0.4);
+  transition: transform 0.1s;
+}
+.save-btn:active { transform: scale(0.97); }
+
+/* ===== TOGGLE ===== */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-label { font-size: 14px; }
+.toggle-desc { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.toggle {
+  position: relative; width: 48px; height: 28px;
+  background: var(--surface3); border-radius: 14px;
+  cursor: pointer; transition: background 0.3s; flex-shrink: 0;
+}
+.toggle.on { background: var(--ruby); }
+.toggle::after {
+  content: ''; position: absolute;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: white; top: 3px; left: 3px;
+  transition: transform 0.3s;
+}
+.toggle.on::after { transform: translateX(20px); }
+
+/* ===== LOADER ===== */
+.loader {
+  display: flex; justify-content: center; padding: 40px 0;
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--surface3);
+  border-top-color: var(--ruby);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.empty-state {
+  text-align: center; padding: 40px 20px; color: var(--text3);
+}
+.empty-state p { font-size: 14px; margin-top: 8px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== LOG ===== */
+.log-box {
+  background: #0a0a0a; border-radius: 10px;
+  padding: 12px; max-height: 300px; overflow-y: auto;
+  font-family: 'Courier New', monospace; font-size: 11px;
+  color: var(--text2); line-height: 1.6;
+  white-space: pre-wrap; word-break: break-all;
+}
+
+/* ===== COUNT BADGE ===== */
+.count-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px;
+  background: var(--ruby); color: white;
+  border-radius: 10px; font-size: 11px; font-weight: 700;
+  margin-left: 8px;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1><span>Ruby</span> Ultra Tune <small style="font-size:12px;color:var(--text3)">v3.0</small></h1>
+  <div class="subtitle">by Arvind Ji — MT6877 Dimensity 1080</div>
+  <div class="status-row">
+    <div class="chip active" id="chipDaemon"><span class="dot"></span> Daemon Running</div>
+    <div class="chip" id="chipGameMode"><span class="dot"></span> Game Mode Off</div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- GAMES PAGE -->
+  <div class="page active" id="pageGames">
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchGames" placeholder="Search apps to add as games...">
+    </div>
+    <div id="gamesListLoading" class="loader"><div class="spinner"></div></div>
+    <div id="gamesList" class="app-list"></div>
+  </div>
+
+  <!-- DO NOT KILL PAGE -->
+  <div class="page" id="pageDNK">
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchDNK" placeholder="Search apps to protect...">
+    </div>
+    <div id="dnkListLoading" class="loader"><div class="spinner"></div></div>
+    <div id="dnkList" class="app-list"></div>
+  </div>
+
+  <!-- STATUS PAGE -->
+  <div class="page" id="pageStatus">
+    <div class="card">
+      <div class="card-title">System Status</div>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-value green" id="statCPU">--</div><div class="stat-label">CPU Freq (Big)</div></div>
+        <div class="stat"><div class="stat-value" id="statGPU">--</div><div class="stat-label">GPU Freq</div></div>
+        <div class="stat"><div class="stat-value amber" id="statRAM">--</div><div class="stat-label">Free RAM</div></div>
+        <div class="stat"><div class="stat-value green" id="statFPS">--</div><div class="stat-label">Display Hz</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Game Mode</div>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-value" id="statGMState">OFF</div><div class="stat-label">Status</div></div>
+        <div class="stat"><div class="stat-value" id="statGMGame">—</div><div class="stat-label">Current Game</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Performance Profile</div>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-value" id="statGPUFloor">--</div><div class="stat-label">GPU Floor</div></div>
+        <div class="stat"><div class="stat-value" id="statSchedBoost">--</div><div class="stat-label">SchedBoost</div></div>
+        <div class="stat"><div class="stat-value" id="statTouchIRQ">--</div><div class="stat-label">Touch IRQ</div></div>
+        <div class="stat"><div class="stat-value green" id="statUclamp">--</div><div class="stat-label">Uclamp Min</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Daemon Log (last 20 lines)</div>
+      <div class="log-box" id="logBox">Loading...</div>
+    </div>
+    <button class="save-btn" style="margin-top:10px;background:var(--surface2);box-shadow:none;" onclick="refreshStatus()">↻ Refresh Status</button>
+  </div>
+
+  <!-- SETTINGS PAGE -->
+  <div class="page" id="pageSettings">
+    <div class="card">
+      <div class="card-title">Game Mode Settings</div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Auto Game Mode</div>
+          <div class="toggle-desc">Automatically detect game launches</div>
+        </div>
+        <div class="toggle on" id="toggleAutoGM" onclick="toggleSetting(this)"></div>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Kill Background Apps</div>
+          <div class="toggle-desc">Force-stop non-essential apps in game mode</div>
+        </div>
+        <div class="toggle on" id="toggleKillBG" onclick="toggleSetting(this)"></div>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">GPU Max Boost</div>
+          <div class="toggle-desc">Lock GPU to 890 MHz during gaming</div>
+        </div>
+        <div class="toggle on" id="toggleGPUBoost" onclick="toggleSetting(this)"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Quick Actions</div>
+      <button class="save-btn" style="margin-bottom:8px;background:var(--green);box-shadow:0 4px 20px rgba(0,230,118,0.3);" onclick="forceGameMode()">⚡ Force Game Mode ON</button>
+      <button class="save-btn" style="background:var(--surface3);box-shadow:none;" onclick="forceNormalMode()">🔄 Force Normal Mode</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Module Info</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+        <div>Version: <strong>v3.0</strong></div>
+        <div>Author: <strong>Arvind Ji</strong></div>
+        <div>Device: <strong>Redmi Note 12 Pro 5G</strong></div>
+        <div>SoC: <strong>Dimensity 1080 (MT6877)</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE BAR -->
+<div class="save-bar" id="saveBar">
+  <button class="save-btn" onclick="saveConfig()">💾 Save Changes</button>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('Games', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/></svg>
+    Games<span class="count-badge" id="badgeGames" style="display:none">0</span>
+  </button>
+  <button class="tab" onclick="switchTab('DNK', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Protected<span class="count-badge" id="badgeDNK" style="display:none">0</span>
+  </button>
+  <button class="tab" onclick="switchTab('Status', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    Status
+  </button>
+  <button class="tab" onclick="switchTab('Settings', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    Settings
+  </button>
+</div>
+
+<script>
+const MODDIR = "/data/adb/modules/ruby_ultra_tune";
+const CONFIG_DIR = MODDIR + "/config";
+
+let allPackages = [];
+let gamesSet = new Set();
+let dnkSet = new Set();
+let hasChanges = false;
+
+// ===== SHELL EXEC BRIDGE =====
+async function exec(cmd) {
+  if (typeof window.ksu !== 'undefined' && window.ksu.exec) {
+    return new Promise((resolve) => {
+      const result = window.ksu.exec(cmd);
+      try {
+        const parsed = JSON.parse(result);
+        resolve(parsed);
+      } catch(e) {
+        resolve({ errno: 0, stdout: result || '', stderr: '' });
+      }
+    });
+  }
+  // Fallback for testing in browser
+  console.log("EXEC:", cmd);
+  return { errno: 0, stdout: '', stderr: '' };
+}
+
+// ===== TAB SWITCHING =====
+function switchTab(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'Status') refreshStatus();
+}
+
+// ===== READABLE NAME FROM PACKAGE =====
+function readableName(pkg) {
+  const skip = ['com','org','io','net','in','me','de','ru','app','android','google','apps','mobile','original','internal','client','launcher','debug','prod','customer','english'];
+  const parts = pkg.split('.').filter(p => !skip.includes(p) && p.length > 1);
+  if (parts.length === 0) return pkg;
+  let name = parts[0];
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+// ===== RENDER APP LIST =====
+function renderList(containerId, searchId, selectedSet, packages) {
+  const container = document.getElementById(containerId);
+  const search = document.getElementById(searchId);
+  const query = search ? search.value.toLowerCase() : '';
+
+  const filtered = packages.filter(pkg =>
+    pkg.toLowerCase().includes(query) || readableName(pkg).toLowerCase().includes(query)
+  );
+
+  // Sort: selected first, then alphabetical
+  filtered.sort((a, b) => {
+    const aS = selectedSet.has(a) ? 0 : 1;
+    const bS = selectedSet.has(b) ? 0 : 1;
+    if (aS !== bS) return aS - bS;
+    return readableName(a).localeCompare(readableName(b));
+  });
+
+  container.innerHTML = filtered.map(pkg => {
+    const checked = selectedSet.has(pkg) ? ' checked' : '';
+    return `<div class="app-item${checked}" onclick="toggleApp('${containerId}', '${pkg}')" data-pkg="${pkg}">
+      <img class="app-icon" src="ksu://icon/${pkg}" onerror="this.style.background='var(--surface3)'">
+      <div class="app-info">
+        <div class="app-name">${readableName(pkg)}</div>
+        <div class="app-pkg">${pkg}</div>
+      </div>
+      <div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+    </div>`;
+  }).join('');
+}
+
+// ===== TOGGLE APP SELECTION =====
+function toggleApp(containerId, pkg) {
+  const set = containerId === 'gamesList' ? gamesSet : dnkSet;
+  if (set.has(pkg)) {
+    set.delete(pkg);
+  } else {
+    set.add(pkg);
+  }
+  renderList(
+    containerId,
+    containerId === 'gamesList' ? 'searchGames' : 'searchDNK',
+    set,
+    allPackages
+  );
+  updateBadges();
+  showSaveBar();
+}
+
+function showSaveBar() {
+  hasChanges = true;
+  document.getElementById('saveBar').classList.add('visible');
+}
+
+function updateBadges() {
+  const bg = document.getElementById('badgeGames');
+  const bd = document.getElementById('badgeDNK');
+  if (gamesSet.size > 0) { bg.textContent = gamesSet.size; bg.style.display = 'inline-flex'; }
+  else { bg.style.display = 'none'; }
+  if (dnkSet.size > 0) { bd.textContent = dnkSet.size; bd.style.display = 'inline-flex'; }
+  else { bd.style.display = 'none'; }
+}
+
+// ===== SAVE CONFIG =====
+async function saveConfig() {
+  const gamesStr = Array.from(gamesSet).join('\n');
+  const dnkStr = Array.from(dnkSet).join('\n');
+
+  await exec(`mkdir -p ${CONFIG_DIR}`);
+  await exec(`cat << 'REOF' > ${CONFIG_DIR}/games.list\n${gamesStr}\nREOF`);
+  await exec(`cat << 'REOF' > ${CONFIG_DIR}/donotkill.list\n${dnkStr}\nREOF`);
+
+  hasChanges = false;
+  document.getElementById('saveBar').classList.remove('visible');
+
+  if (typeof window.ksu !== 'undefined' && window.ksu.toast) {
+    window.ksu.toast("Config saved! Game Mode daemon will pick it up automatically.");
+  }
+}
+
+// ===== LOAD CONFIG =====
+async function loadConfig() {
+  const gamesRes = await exec(`cat ${CONFIG_DIR}/games.list 2>/dev/null`);
+  const dnkRes = await exec(`cat ${CONFIG_DIR}/donotkill.list 2>/dev/null`);
+
+  if (gamesRes.stdout) {
+    gamesRes.stdout.trim().split('\n').filter(l => l.trim()).forEach(l => gamesSet.add(l.trim()));
+  }
+  if (dnkRes.stdout) {
+    dnkRes.stdout.trim().split('\n').filter(l => l.trim()).forEach(l => dnkSet.add(l.trim()));
+  }
+  updateBadges();
+}
+
+// ===== LOAD PACKAGES =====
+async function loadPackages() {
+  const res = await exec(`sh ${MODDIR}/scripts/list_apps.sh`);
+  if (res.stdout) {
+    allPackages = res.stdout.trim().split('\n').filter(l => l.trim()).map(l => l.trim());
+  }
+
+  document.getElementById('gamesListLoading').style.display = 'none';
+  document.getElementById('dnkListLoading').style.display = 'none';
+
+  if (allPackages.length === 0) {
+    document.getElementById('gamesList').innerHTML = '<div class="empty-state"><p>No apps found</p></div>';
+    document.getElementById('dnkList').innerHTML = '<div class="empty-state"><p>No apps found</p></div>';
+    return;
+  }
+
+  renderList('gamesList', 'searchGames', gamesSet, allPackages);
+  renderList('dnkList', 'searchDNK', dnkSet, allPackages);
+}
+
+// ===== STATUS REFRESH =====
+async function refreshStatus() {
+  // CPU
+  const cpu = await exec("cat /sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq 2>/dev/null");
+  if (cpu.stdout) {
+    const mhz = Math.round(parseInt(cpu.stdout.trim()) / 1000);
+    document.getElementById('statCPU').textContent = mhz + ' MHz';
+  }
+
+  // GPU
+  const gpu = await exec("cat /sys/module/ged/parameters/gpu_loading 2>/dev/null");
+  const gpuFreq = await exec("cat /sys/kernel/ged/hal/current_freqency 2>/dev/null");
+  if (gpuFreq.stdout) {
+    const parts = gpuFreq.stdout.trim().split(' ');
+    const mhz = Math.round(parseInt(parts[parts.length - 1]) / 1000);
+    document.getElementById('statGPU').textContent = mhz + ' MHz';
+  }
+
+  // RAM
+  const mem = await exec("cat /proc/meminfo 2>/dev/null | head -3");
+  if (mem.stdout) {
+    const lines = mem.stdout.trim().split('\n');
+    for (const line of lines) {
+      if (line.includes('MemAvailable')) {
+        const kb = parseInt(line.replace(/[^0-9]/g, ''));
+        document.getElementById('statRAM').textContent = Math.round(kb / 1024) + ' MB';
+      }
+    }
+  }
+
+  // Display Hz
+  const fps = await exec("dumpsys display 2>/dev/null | grep -m1 'renderFrameRate\\|mRefreshRate'");
+  if (fps.stdout) {
+    const match = fps.stdout.match(/(\d+\.?\d*)/);
+    if (match) document.getElementById('statFPS').textContent = Math.round(parseFloat(match[1])) + ' Hz';
+  }
+
+  // Game Mode State
+  const gm = await exec(`cat ${CONFIG_DIR}/gamemode_active 2>/dev/null`);
+  const gmState = gm.stdout && gm.stdout.trim() === '1';
+  const chipGM = document.getElementById('chipGameMode');
+  document.getElementById('statGMState').textContent = gmState ? 'ON' : 'OFF';
+  document.getElementById('statGMState').className = 'stat-value ' + (gmState ? 'green' : '');
+  chipGM.className = gmState ? 'chip game' : 'chip';
+  chipGM.querySelector('.dot').nextSibling.textContent = gmState ? ' Game Mode ON' : ' Game Mode Off';
+
+  if (gmState) {
+    const cg = await exec(`cat ${CONFIG_DIR}/current_game 2>/dev/null`);
+    document.getElementById('statGMGame').textContent = cg.stdout ? readableName(cg.stdout.trim()) : '—';
+    document.getElementById('statGMGame').style.fontSize = '14px';
+  } else {
+    document.getElementById('statGMGame').textContent = '—';
+  }
+
+  // Daemon status
+  const dp = await exec(`cat ${CONFIG_DIR}/daemon.pid 2>/dev/null`);
+  const chipDaemon = document.getElementById('chipDaemon');
+  if (dp.stdout && dp.stdout.trim()) {
+    const alive = await exec(`kill -0 ${dp.stdout.trim()} 2>/dev/null && echo alive`);
+    if (alive.stdout && alive.stdout.includes('alive')) {
+      chipDaemon.className = 'chip active';
+    } else {
+      chipDaemon.className = 'chip';
+      chipDaemon.querySelector('.dot').nextSibling.textContent = ' Daemon Stopped';
+    }
+  }
+
+  // GPU Floor
+  const gpuFloor = await exec("cat /sys/module/ged/parameters/gpu_cust_boost_freq 2>/dev/null");
+  if (gpuFloor.stdout) {
+    document.getElementById('statGPUFloor').textContent = Math.round(parseInt(gpuFloor.stdout.trim()) / 1000) + ' MHz';
+  }
+
+  // SchedBoost
+  const sb = await exec("cat /dev/stune/top-app/schedtune.boost 2>/dev/null");
+  if (sb.stdout) document.getElementById('statSchedBoost').textContent = sb.stdout.trim();
+
+  // Touch IRQ
+  const tirq = await exec("grep -iE 'fts_ts|goodix|focaltech' /proc/interrupts 2>/dev/null | head -1 | awk '{print $1}' | tr -d ':'");
+  if (tirq.stdout && tirq.stdout.trim()) {
+    const aff = await exec(`cat /proc/irq/${tirq.stdout.trim()}/smp_affinity_list 2>/dev/null`);
+    document.getElementById('statTouchIRQ').textContent = aff.stdout ? 'Core ' + aff.stdout.trim() : '—';
+  }
+
+  // Uclamp
+  const uc = await exec("cat /proc/perfmgr/boost_ctrl/eas_ctrl/perf_ta_uclamp_min 2>/dev/null");
+  if (uc.stdout) document.getElementById('statUclamp').textContent = uc.stdout.trim();
+
+  // Log
+  const log = await exec(`tail -20 ${CONFIG_DIR}/gamemode.log 2>/dev/null`);
+  document.getElementById('logBox').textContent = log.stdout ? log.stdout.trim() : 'No log entries yet. Start a game to see activity.';
+}
+
+// ===== QUICK ACTIONS =====
+async function forceGameMode() {
+  await exec(`sh -c '
+    echo 50 > /dev/stune/top-app/schedtune.boost
+    echo 890000 > /sys/module/ged/parameters/gpu_cust_boost_freq
+    echo 1 > /sys/module/ged/parameters/gx_game_mode
+    echo 1 > /sys/module/ged/parameters/boost_gpu_enable
+    echo 300 > /proc/perfmgr/boost_ctrl/eas_ctrl/perf_ta_uclamp_min
+    echo 0-1 > /dev/cpuset/background/cpus
+    echo 3 > /proc/sys/vm/drop_caches
+  '`);
+  if (window.ksu && window.ksu.toast) window.ksu.toast("Game Mode forced ON!");
+  setTimeout(refreshStatus, 500);
+}
+
+async function forceNormalMode() {
+  await exec(`sh -c '
+    echo 10 > /dev/stune/top-app/schedtune.boost
+    echo 509000 > /sys/module/ged/parameters/gpu_cust_boost_freq
+    echo 0 > /sys/module/ged/parameters/gx_game_mode
+    echo 0 > /sys/module/ged/parameters/boost_gpu_enable
+    echo 120 > /proc/perfmgr/boost_ctrl/eas_ctrl/perf_ta_uclamp_min
+    echo 0-3 > /dev/cpuset/background/cpus
+    echo 0 > ${CONFIG_DIR}/gamemode_active
+  '`);
+  if (window.ksu && window.ksu.toast) window.ksu.toast("Normal mode restored.");
+  setTimeout(refreshStatus, 500);
+}
+
+function toggleSetting(el) {
+  el.classList.toggle('on');
+}
+
+// ===== SEARCH HANDLERS =====
+document.getElementById('searchGames').addEventListener('input', () => {
+  renderList('gamesList', 'searchGames', gamesSet, allPackages);
+});
+document.getElementById('searchDNK').addEventListener('input', () => {
+  renderList('dnkList', 'searchDNK', dnkSet, allPackages);
+});
+
+// ===== INIT =====
+async function init() {
+  await loadConfig();
+  await loadPackages();
+}
+
+init();
+</script>
+</body>
+</html>

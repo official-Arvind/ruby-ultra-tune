@@ -1,1 +1,2 @@
-# ruby_ultra_tune: Display and brightness properties completely removed
+# Ruby Ultra Tune v3.0 — System Properties
+# No display properties injected (causes GPU OOM and DRM pipeline corruption)

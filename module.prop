@@ -1,6 +1,6 @@
 id=ruby_ultra_tune
-name=Ruby Ultra Performance & Hotspot Thermal Nuker
-version=v2.3
-versionCode=23
+name=Ruby Ultra Tune
+version=v3.0
+versionCode=30
 author=Arvind Ji
-description=Jitter-free flagship performance, F2FS I/O optimization, cpuset multitasking, and MT6877 kernel tuning for Redmi Note 12 Pro 5G.
+description=Flagship performance engine with Auto Game Mode, GPU tuning, network optimization, touch IRQ affinity, and WebGUI for Redmi Note 12 Pro 5G (MT6877).
