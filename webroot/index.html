@@ -552,14 +552,14 @@ async function saveConfig() {
 
 // ===== LOAD CONFIG =====
 async function loadConfig() {
-  const gamesRes = await exec(`cat ${CONFIG_DIR}/games.list 2>/dev/null`);
-  const dnkRes = await exec(`cat ${CONFIG_DIR}/donotkill.list 2>/dev/null`);
+  const gamesRes = await exec(`cat ${CONFIG_DIR}/games.list 2>/dev/null | tr '\\n' ','`);
+  const dnkRes = await exec(`cat ${CONFIG_DIR}/donotkill.list 2>/dev/null | tr '\\n' ','`);
 
   if (gamesRes.stdout) {
-    gamesRes.stdout.trim().split('\n').filter(l => l.trim()).forEach(l => gamesSet.add(l.trim()));
+    gamesRes.stdout.trim().split(',').filter(l => l.trim()).forEach(l => gamesSet.add(l.trim()));
   }
   if (dnkRes.stdout) {
-    dnkRes.stdout.trim().split('\n').filter(l => l.trim()).forEach(l => dnkSet.add(l.trim()));
+    dnkRes.stdout.trim().split(',').filter(l => l.trim()).forEach(l => dnkSet.add(l.trim()));
   }
   updateBadges();
 }
