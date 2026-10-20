@@ -18,14 +18,14 @@ Flagship performance engine for **Redmi Note 12 Pro 5G** (ruby/rubypro) — Medi
 - **Multitasking** — Expanded cpusets, phantom process killer disabled, EAS uclamp boost
 - **Background watchdog** — Re-applies tunables every 10s to fight MTK PowerHAL resets
 
-### Auto Game Mode
+### Auto Game Mode    : ❌ DROPPED FOR FEW RELEASES CUZ IT CREATED MORE PROBLEMS AND ITS TOO COMPLEX TO PROPERLY OPTIMISE , PLANNING TO RE-MAKE THIS MODE AFTER FEW RELEASES ( AFTER MAKING EXISTING FEATURES FULLY STABLE ) . ....
 - Detects game launches automatically via activity monitoring
 - Kills non-essential background apps to free RAM
 - Boosts GPU to 890 MHz and CPU scheduling priority to maximum
 - Restricts background processes to efficiency cores only
 - Drops caches and compacts ZRAM before game starts
 - Restores normal profile when you exit the game
-- Configurable via built-in WebGUI
+- Configurable via built-in WebGUI 
 
 ### WebGUI
 - Dark Material You themed interface
