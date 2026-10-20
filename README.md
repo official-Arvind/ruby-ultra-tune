@@ -1,3 +1,7 @@
+**WARNING ⚠️ ⚠️ ⚠️**
+## This should be used solely for testing purposes as this module is fully in testing phase it may have many bugs and may drain excessive battery, so no guarantee of working + No risk for phone brocking / battery degrading / catching fire etc .
+
+
 # Ruby Ultra Tune
 
 Flagship performance engine for **Redmi Note 12 Pro 5G** (ruby/rubypro) — MediaTek Dimensity 1080 (MT6877).
